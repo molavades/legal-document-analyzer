@@ -116,10 +116,10 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Navigation menu
+    # Navigation menu - removed Dashboard
     menu = st.radio(
         "Navigate to",
-        ["Dashboard", "Document Upload", "Document Analysis", "Search Documents", "About"]
+        ["Document Upload", "Document Analysis", "Search Documents", "About"]
     )
     
     st.markdown("---")
@@ -143,73 +143,7 @@ with st.sidebar:
     st.caption("Version 1.0")
 
 # Main content based on navigation
-if menu == "Dashboard":
-    st.title("📊 Dashboard")
-    
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Recent Activity")
-    
-    # Recent activity metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Documents Uploaded", "5", "+2")
-    with col2:
-        st.metric("Risk Assessments", "3", "+1")
-    with col3:
-        st.metric("Clauses Extracted", "145", "+37")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Documents overview
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Your Documents")
-    
-    # Sample table
-    data = {
-        "Document": ["Employment Contract", "NDA Agreement", "Service Agreement", "License Agreement", "Lease Contract"],
-        "Date": ["2025-04-20", "2025-04-18", "2025-04-15", "2025-04-10", "2025-04-05"],
-        "Type": ["Employment", "Confidentiality", "Service", "License", "Lease"],
-        "Status": ["Analyzed", "Analyzed", "Analyzed", "Pending", "Pending"]
-    }
-    
-    # Convert to dataframe and display
-    import pandas as pd
-    df = pd.DataFrame(data)
-    st.dataframe(df, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Risk summary
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Risk Summary")
-    
-    risk_col1, risk_col2 = st.columns([3, 2])
-    
-    with risk_col1:
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
-        # Sample data for risks
-        labels = ['High', 'Medium', 'Low']
-        sizes = [2, 5, 12]
-        colors = ['#e53e3e', '#f6ad55', '#68d391']
-        
-        # Create a figure and plot
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        st.pyplot(fig)
-        
-    with risk_col2:
-        st.markdown("#### Risk Distribution")
-        st.markdown('<span class="risk-high">High Risk: 2</span>', unsafe_allow_html=True)
-        st.write("")
-        st.markdown('<span class="risk-medium">Medium Risk: 5</span>', unsafe_allow_html=True)
-        st.write("")
-        st.markdown('<span class="risk-low">Low Risk: 12</span>', unsafe_allow_html=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-elif menu == "Document Upload":
+if menu == "Document Upload":
     st.title("📄 Document Upload")
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -251,6 +185,7 @@ elif menu == "Document Upload":
         st.subheader("Recent Uploads")
         
         # Sample history
+        import pandas as pd
         history_data = {
             "Filename": [uploaded_file.name, "Previous_Document.pdf", "Old_Contract.pdf"],
             "Upload Date": ["2025-04-26", "2025-04-25", "2025-04-24"],
@@ -360,52 +295,20 @@ NOW, THEREFORE, in consideration of the mutual covenants, promises, and obligati
             
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Entity relationships visualization
+        # Entity relationships visualization - simplified to avoid networkx dependency
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("Entity Relationships")
         
-        # Simple network graph visualization
-        import networkx as nx
-        
-        # Create a graph
-        G = nx.Graph()
-        
-        # Add nodes
-        G.add_node("COMPANY INC.", type="organization")
-        G.add_node("JOHN DOE", type="person")
-        G.add_node("Employment Agreement", type="document")
-        G.add_node("$120,000", type="money")
-        G.add_node("April 26, 2025", type="date")
-        
-        # Add edges
-        G.add_edge("COMPANY INC.", "Employment Agreement", relation="party to")
-        G.add_edge("JOHN DOE", "Employment Agreement", relation="party to")
-        G.add_edge("COMPANY INC.", "JOHN DOE", relation="employs")
-        G.add_edge("$120,000", "JOHN DOE", relation="salary of")
-        G.add_edge("April 26, 2025", "Employment Agreement", relation="effective date of")
-        
-        # Plot
-        fig, ax = plt.subplots(figsize=(8, 6))
-        pos = nx.spring_layout(G, seed=42)
-        
-        # Draw nodes with different colors based on type
-        nx.draw_networkx_nodes(G, pos, nodelist=[n for n, d in G.nodes(data=True) if d.get('type') == 'organization'], 
-                             node_color='#4299e1', node_size=800, alpha=0.9)
-        nx.draw_networkx_nodes(G, pos, nodelist=[n for n, d in G.nodes(data=True) if d.get('type') == 'person'], 
-                             node_color='#f56565', node_size=800, alpha=0.9)
-        nx.draw_networkx_nodes(G, pos, nodelist=[n for n, d in G.nodes(data=True) if d.get('type') == 'document'], 
-                             node_color='#68d391', node_size=800, alpha=0.9)
-        nx.draw_networkx_nodes(G, pos, nodelist=[n for n, d in G.nodes(data=True) if d.get('type') == 'money'], 
-                             node_color='#ecc94b', node_size=800, alpha=0.9)
-        nx.draw_networkx_nodes(G, pos, nodelist=[n for n, d in G.nodes(data=True) if d.get('type') == 'date'], 
-                             node_color='#9f7aea', node_size=800, alpha=0.9)
-        
-        # Draw edges and labels
-        nx.draw_networkx_edges(G, pos, width=2, alpha=0.7)
-        nx.draw_networkx_labels(G, pos, font_size=10, font_family="sans-serif", font_weight="bold")
-        
-        ax.axis('off')
-        st.pyplot(fig)
+        # Simple table representation instead of a graph
+        st.markdown("""
+        | Entity 1 | Relationship | Entity 2 |
+        |----------|--------------|----------|
+        | COMPANY INC. | employs | JOHN DOE |
+        | COMPANY INC. | party to | Employment Agreement |
+        | JOHN DOE | party to | Employment Agreement |
+        | $120,000 | salary of | JOHN DOE |
+        | April 26, 2025 | effective date of | Employment Agreement |
+        """)
         
         st.markdown("</div>", unsafe_allow_html=True)
     
@@ -486,25 +389,32 @@ NOW, THEREFORE, in consideration of the mutual covenants, promises, and obligati
         
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Word cloud visualization
+        # Key terms instead of word cloud
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Key Terms Frequency")
+        st.subheader("Key Terms")
         
-        from wordcloud import WordCloud
+        terms_cols = st.columns(3)
         
-        # Sample text for word cloud
-        text = "employment agreement company employee term effective date termination cause section agreement compensation salary services notice period non-compete restrictive covenant confidential information intellectual property governing law jurisdiction amendment waiver severability entire agreement counterparts"
-        
-        # Generate word cloud
-        wordcloud = WordCloud(width=800, height=400, background_color='white', 
-                              colormap='viridis', max_words=50, 
-                              contour_width=1, contour_color='steelblue').generate(text)
-        
-        # Display the word cloud
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis("off")
-        st.pyplot(fig)
+        with terms_cols[0]:
+            st.markdown("#### Contract Structure")
+            st.markdown("- Employment Agreement")
+            st.markdown("- Effective Date")
+            st.markdown("- Term")
+            st.markdown("- Sections")
+            
+        with terms_cols[1]:
+            st.markdown("#### Key Clauses")
+            st.markdown("- Termination")
+            st.markdown("- Compensation")
+            st.markdown("- Non-compete")
+            st.markdown("- Confidentiality")
+            
+        with terms_cols[2]:
+            st.markdown("#### Legal Concepts")
+            st.markdown("- Cause")
+            st.markdown("- Notice Period")
+            st.markdown("- Jurisdiction")
+            st.markdown("- Remedies")
         
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -521,14 +431,14 @@ elif menu == "Search Documents":
         
         # Sample search results
         st.markdown("### Search Results")
-
+        
         # Result 1
         st.markdown('<div style="padding:15px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; margin-bottom:15px;">'
-           '<h4 style="margin-top:0;">Employment Agreement (Section 5)</h4>'
-           '<p><mark>This Agreement may be terminated by either party with thirty (30) days written notice.</mark> '
-           'The Company may terminate the Employee\'s employment immediately for Cause...</p>'
-           '<p><strong>Relevance Score:</strong> 95%</p>'
-           '</div>', unsafe_allow_html=True)
+                   '<h4 style="margin-top:0;">Employment Agreement (Section 5)</h4>'
+                   '<p><mark>This Agreement may be terminated by either party with thirty (30) days written notice.</mark> '
+                   'The Company may terminate the Employee\'s employment immediately for Cause...</p>'
+                   '<p><strong>Relevance Score:</strong> 95%</p>'
+                   '</div>', unsafe_allow_html=True)
         
         # Result 2
         st.markdown('<div style="padding:15px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; margin-bottom:15px;">'
@@ -597,7 +507,6 @@ else:  # About section
         - Streamlit 1.26.0
         - Pandas
         - Matplotlib
-        - NetworkX
         """)
     
     with tech_col2:
@@ -626,8 +535,8 @@ else:  # About section
     
     st.markdown("""
     **Developer:** Snehal Molavade  
-    **Email:** [yourname@example.com](mailto:yourname@example.com)  
-    **GitHub:** [github.com/yourusername](https://github.com/yourusername)  
+    **Email:** molavade.s@northeastern.edu  
+    **GitHub:** github.com/molavades  
     """)
     
     st.markdown("</div>", unsafe_allow_html=True)
