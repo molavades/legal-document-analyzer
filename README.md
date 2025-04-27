@@ -103,6 +103,7 @@ The system is built using the Contract Understanding Atticus Dataset (CUAD), whi
 
 ## 🏗️ System Architecture
 
+---
 ┌─────────────────┐         ┌──────────────────┐         ┌────────────────┐
 │                 │         │                  │         │                │
 │    Streamlit    │ ◄─────► │     FastAPI      │ ◄─────► │    Pinecone    │
@@ -117,7 +118,7 @@ The system is built using the Contract Understanding Atticus Dataset (CUAD), whi
                             │    OpenAI API    │
                             │                  │
                             └──────────────────┘
-
+---
 
 The system follows a three-tier architecture:
 
