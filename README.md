@@ -60,50 +60,9 @@ legal-document-analyzer/
 └── README.md                   # Project documentation
 ```
 
-#
-# Legal Document Analysis System
-
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.10-green.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.103.1-teal.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.26.0-red.svg)
-![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-purple.svg)
-![Pinecone](https://img.shields.io/badge/Pinecone-2.2.2-orange.svg)
-
-A sophisticated legal document analysis system that leverages AI and natural language processing to streamline contract review, risk assessment, and insight extraction from legal documents.
-
-## 📚 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [System Architecture](#system-architecture)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Technologies Used](#technologies-used)
-- [Challenges and Solutions](#challenges-and-solutions)
-- [Future Enhancements](#future-enhancements)
-- [Contact](#contact)
-
-## 🔍 Overview
-
-The Legal Document Analysis System is designed to help legal professionals efficiently analyze and extract insights from contracts and legal documents. By combining advanced text processing techniques with domain-specific legal knowledge, the system automates time-consuming aspects of contract review, enabling lawyers to focus on higher-value tasks.
-
-The system is built using the Contract Understanding Atticus Dataset (CUAD), which contains 510 commercial legal contracts with over 13,000 expert annotations spanning 41 categories of important legal clauses.
-
-## ✨ Features
-
-- **Document Processing**: Extract text from PDF and TXT files with intelligent chunking
-- **Entity Extraction**: Identify parties, dates, monetary values, and locations within contracts
-- **Clause Identification**: Automatically detect and categorize different types of legal clauses
-- **Risk Assessment**: Evaluate potential risks in contracts with severity ratings
-- **Document Comparison**: Compare similar clauses across multiple documents to identify discrepancies
-- **Semantic Search**: Find relevant information across documents using natural language queries
-- **Interactive Visualization**: Explore document analysis through an intuitive user interface
-
 ## 🏗️ System Architecture
 
----
+```
 ┌─────────────────┐         ┌──────────────────┐         ┌────────────────┐
 │                 │         │                  │         │                │
 │    Streamlit    │ ◄─────► │     FastAPI      │ ◄─────► │    Pinecone    │
@@ -118,7 +77,7 @@ The system is built using the Contract Understanding Atticus Dataset (CUAD), whi
                             │    OpenAI API    │
                             │                  │
                             └──────────────────┘
----
+```
 
 The system follows a three-tier architecture:
 
