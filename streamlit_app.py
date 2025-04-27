@@ -2,7 +2,6 @@ import streamlit as st
 import os
 import io
 import pandas as pd
-import matplotlib.pyplot as plt
 import base64
 from PIL import Image
 import PyPDF2
@@ -111,6 +110,51 @@ st.markdown("""
         background-color: #2c5282;
         color: white;
     }
+    
+    /* Progress bar colors */
+    .stProgress > div > div {
+        background-color: #2c5282;
+    }
+    
+    /* Metrics styling */
+    .metric-card {
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 36px;
+        font-weight: bold;
+        color: #2c5282;
+    }
+    
+    .metric-label {
+        font-size: 16px;
+        color: #4a5568;
+    }
+    
+    /* Table styling */
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 16px;
+    }
+    .styled-table thead tr {
+        background-color: #2c5282;
+        color: white;
+        text-align: left;
+    }
+    .styled-table th,
+    .styled-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dddddd;
+    }
+    .styled-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,6 +165,8 @@ if 'current_document' not in st.session_state:
     st.session_state.current_document = None
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = {}
+if 'comparison_docs' not in st.session_state:
+    st.session_state.comparison_docs = []
 
 # PDF text extraction function
 def extract_text_from_pdf(pdf_bytes):
@@ -243,6 +289,47 @@ def assess_risks(clauses):
     
     return risks
 
+# Compare two documents
+def compare_documents(doc1, doc2, analysis1, analysis2):
+    """Compare two legal documents and identify similarities and differences"""
+    comparison = {
+        "overview": {
+            "doc1_name": doc1["filename"],
+            "doc2_name": doc2["filename"],
+            "doc1_size": f"{doc1['size']/1024:.1f} KB",
+            "doc2_size": f"{doc2['size']/1024:.1f} KB",
+            "doc1_word_count": len(doc1["content"].split()),
+            "doc2_word_count": len(doc2["content"].split())
+        },
+        "clauses": {},
+        "risks": {
+            "doc1_risks": len(analysis1["risks"]),
+            "doc2_risks": len(analysis1["risks"]),
+            "doc1_high_risks": len([r for r in analysis1["risks"] if r["severity"] == "High"]),
+            "doc2_high_risks": len([r for r in analysis2["risks"] if r["severity"] == "High"])
+        },
+        "entities": {
+            "doc1_entities": sum(len(entities) for entities in analysis1["entities"].values()),
+            "doc2_entities": sum(len(entities) for entities in analysis2["entities"].values())
+        }
+    }
+    
+    # Compare clauses
+    all_clause_types = set(list(analysis1["clauses"].keys()) + list(analysis2["clauses"].keys()))
+    
+    for clause_type in all_clause_types:
+        doc1_has = clause_type in analysis1["clauses"] and len(analysis1["clauses"][clause_type]) > 0
+        doc2_has = clause_type in analysis2["clauses"] and len(analysis2["clauses"][clause_type]) > 0
+        
+        comparison["clauses"][clause_type] = {
+            "doc1_has": doc1_has,
+            "doc2_has": doc2_has,
+            "doc1_count": len(analysis1["clauses"].get(clause_type, [])),
+            "doc2_count": len(analysis2["clauses"].get(clause_type, []))
+        }
+    
+    return comparison
+
 # Sidebar navigation
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/scales--v1.png", width=80)
@@ -253,7 +340,7 @@ with st.sidebar:
     # Navigation menu
     menu = st.radio(
         "Navigate to",
-        ["Document Upload", "Document Analysis", "Search Documents", "About"]
+        ["Document Upload", "Document Analysis", "Compare Documents", "Search Documents", "About"]
     )
     
     st.markdown("---")
@@ -341,35 +428,12 @@ if menu == "Document Upload":
         with col2:
             st.subheader("Document Preview")
             if uploaded_file.type == "application/pdf":
-                # Display first page as an image for PDF
+                # Try to display first page as text
                 try:
-                    import fitz  # PyMuPDF
-                    
-                    # Create a BytesIO object from the uploaded file
-                    file_stream = io.BytesIO(uploaded_file.getvalue())
-                    
-                    # Open the PDF file
-                    pdf_document = fitz.open(stream=file_stream, filetype="pdf")
-                    
-                    # Get the first page
-                    first_page = pdf_document.load_page(0)
-                    
-                    # Render page to an image
-                    pix = first_page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                    
-                    # Convert to PIL Image
-                    img = Image.open(io.BytesIO(pix.tobytes("png")))
-                    
-                    # Display the image
-                    st.image(img, caption=f"First page of {uploaded_file.name}", use_column_width=True)
-                    
-                    # Close the document
-                    pdf_document.close()
-                except Exception as e:
-                    st.error(f"Cannot preview PDF: {e}")
-                    # Fallback text preview
                     text = extract_text_from_pdf(uploaded_file.getvalue())
                     st.text_area("Text Preview", text[:1000] + "..." if len(text) > 1000 else text, height=400)
+                except Exception as e:
+                    st.error(f"Cannot preview PDF: {e}")
             else:
                 # For text files, show the content
                 try:
@@ -506,11 +570,11 @@ elif menu == "Document Analysis":
             
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Entity visualization
+            # Entity visualization without matplotlib
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.subheader("Entity Distribution")
             
-            # Create a bar chart of entities
+            # Create entity summary using columns instead of chart
             entity_counts = {
                 "Parties": len(analysis['entities']['parties']),
                 "Dates": len(analysis['entities']['dates']),
@@ -518,31 +582,17 @@ elif menu == "Document Analysis":
                 "Locations": len(analysis['entities']['locations'])
             }
             
-            fig, ax = plt.subplots(figsize=(10, 5))
-            bars = ax.bar(
-                entity_counts.keys(),
-                entity_counts.values(),
-                color=['#4299e1', '#f56565', '#ecc94b', '#9f7aea']
-            )
+            # Display metrics in a row
+            entity_cols = st.columns(4)
             
-            # Add value labels on top of bars
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(
-                    bar.get_x() + bar.get_width()/2.,
-                    height + 0.1,
-                    str(int(height)),
-                    ha='center',
-                    va='bottom',
-                    fontweight='bold'
-                )
-                
-            ax.set_ylabel("Count")
-            ax.set_title("Entity Counts by Type")
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            
-            st.pyplot(fig)
+            for i, (entity_type, count) in enumerate(entity_counts.items()):
+                with entity_cols[i]:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-value">{count}</div>
+                        <div class="metric-label">{entity_type}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             st.markdown("</div>", unsafe_allow_html=True)
         
@@ -621,34 +671,33 @@ elif menu == "Document Analysis":
                                f'<p><strong>Clause Type:</strong> {risk.get("clause_type", "Multiple clauses").replace("_", " ").title()}</p>'
                                f'</div>', unsafe_allow_html=True)
                 
-                # Risk distribution pie chart
-                if sum(risk_counts.values()) > 0:
-                    fig, ax = plt.subplots(figsize=(6, 6))
-                    labels = []
-                    sizes = []
-                    colors = []
+                # Risk distribution using metrics
+                st.subheader("Risk Distribution")
+                risk_cols = st.columns(3)
+                
+                with risk_cols[0]:
+                    st.markdown(f"""
+                    <div style="text-align:center; padding:15px; background-color:#fed7d7; border-radius:10px;">
+                        <div style="font-size:24px; font-weight:bold; color:#c53030;">{risk_counts["High"]}</div>
+                        <div style="font-size:16px; color:#c53030;">High Risks</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    if risk_counts["High"] > 0:
-                        labels.append("High")
-                        sizes.append(risk_counts["High"])
-                        colors.append('#e53e3e')
-                        
-                    if risk_counts["Medium"] > 0:
-                        labels.append("Medium")
-                        sizes.append(risk_counts["Medium"])
-                        colors.append('#f6ad55')
-                        
-                    if risk_counts["Low"] > 0:
-                        labels.append("Low")
-                        sizes.append(risk_counts["Low"])
-                        colors.append('#68d391')
+                with risk_cols[1]:
+                    st.markdown(f"""
+                    <div style="text-align:center; padding:15px; background-color:#feebc8; border-radius:10px;">
+                        <div style="font-size:24px; font-weight:bold; color:#c05621;">{risk_counts["Medium"]}</div>
+                        <div style="font-size:16px; color:#c05621;">Medium Risks</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Plot pie chart
-                    ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-                    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
-                    ax.set_title("Risk Severity Distribution")
-                    
-                    st.pyplot(fig)
+                with risk_cols[2]:
+                    st.markdown(f"""
+                    <div style="text-align:center; padding:15px; background-color:#c6f6d5; border-radius:10px;">
+                        <div style="font-size:24px; font-weight:bold; color:#2f855a;">{risk_counts["Low"]}</div>
+                        <div style="font-size:16px; color:#2f855a;">Low Risks</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             st.markdown("</div>", unsafe_allow_html=True)
         
@@ -656,55 +705,187 @@ elif menu == "Document Analysis":
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.subheader("Document Summary")
             
+            # Count clauses by type
+            clause_counts = {k.replace('_', ' ').title(): len(v) for k, v in analysis['clauses'].items() if v}
+            
+            # Calculate statistics
+            entity_count = sum(len(entities) for entities in analysis['entities'].values())
+            
             # Generate simple summary
             summary = f"""
             This document is titled "{document['filename']}" and contains approximately {word_count} words.
             
             Key findings from the analysis:
             
-            1. **Entities**: Found {sum(len(entities) for entities in analysis['entities'].values())} entities including {len(analysis['entities']['parties'])} parties, {len(analysis['entities']['dates'])} dates, {len(analysis['entities']['monetary_values'])} monetary values, and {len(analysis['entities']['locations'])} locations.
+            1. **Entities**: Found {entity_count} entities including {len(analysis['entities']['parties'])} parties, {len(analysis['entities']['dates'])} dates, {len(analysis['entities']['monetary_values'])} monetary values, and {len(analysis['entities']['locations'])} locations.
             
-            2. **Clauses**: Identified {clause_count} clauses across {len([k for k, v in analysis['clauses'].items() if v])} categories, with the most common types being {', '.join([k.replace('_', ' ').title() for k, v in analysis['clauses'].items() if v][:3])}.
-            
-            3. **Risks**: {len(analysis['risks'])} potential risks detected, with the highest risk level being {overall_risk if 'overall_risk' in locals() else 'None'}.
+            2. **Clauses**: Identified {sum(len(v) for v in analysis['clauses'].values())} clauses across {len([k for k, v in analysis['clauses'].items() if v])} categories
             """
+            
+            if clause_counts:
+                top_clauses = sorted(clause_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                summary += f", with the most common types being {', '.join([f'{k} ({v})' for k, v in top_clauses])}."
+            else:
+                summary += "."
+                
+            summary += f"""
+            
+            3. **Risks**: {len(analysis['risks'])} potential risks detected
+            """
+            
+            if "overall_risk" in locals():
+                summary += f", with the highest risk level being {overall_risk}."
+            else:
+                summary += "."
             
             st.markdown(summary)
             
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Visualization of clauses
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.subheader("Clause Distribution")
-            
-            # Count clauses by type
-            clause_type_counts = {k.replace('_', ' ').title(): len(v) for k, v in analysis['clauses'].items() if v}
-            
-            if clause_type_counts:
-                fig, ax = plt.subplots(figsize=(10, 6))
+            # Visualization of clauses without matplotlib
+            if clause_counts:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.subheader("Clause Distribution")
                 
-                # Horizontal bar chart
-                y_pos = range(len(clause_type_counts))
+                # Create HTML table for clause distribution
+                st.markdown('<table class="styled-table">', unsafe_allow_html=True)
+                st.markdown('<thead><tr><th>Clause Type</th><th>Count</th></tr></thead><tbody>', unsafe_allow_html=True)
                 
                 # Sort by count in descending order
-                sorted_items = sorted(clause_type_counts.items(), key=lambda x: x[1], reverse=True)
-                labels = [item[0] for item in sorted_items]
-                counts = [item[1] for item in sorted_items]
+                sorted_items = sorted(clause_counts.items(), key=lambda x: x[1], reverse=True)
                 
-                bars = ax.barh(y_pos, counts, align='center')
-                ax.set_yticks(y_pos)
-                ax.set_yticklabels(labels)
-                ax.invert_yaxis()  # Labels read top-to-bottom
-                ax.set_xlabel('Count')
-                ax.set_title('Clause Frequency by Type')
+                for clause_type, count in sorted_items:
+                    st.markdown(f'<tr><td>{clause_type}</td><td>{count}</td></tr>', unsafe_allow_html=True)
                 
-                # Add count labels
-                for i, v in enumerate(counts):
-                    ax.text(v + 0.1, i, str(v), va='center')
+                st.markdown('</tbody></table>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+elif menu == "Compare Documents":
+    st.title("🔄 Compare Documents")
+    
+    if len(st.session_state.documents) < 2:
+        st.warning("You need at least two processed documents for comparison. Please upload and process more documents.")
+    else:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Select Documents to Compare")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### First Document")
+            doc1_options = {doc_id: doc["filename"] for doc_id, doc in st.session_state.documents.items()}
+            doc1_id = st.selectbox("Select first document", options=list(doc1_options.keys()), format_func=lambda x: doc1_options[x], key="doc1_select")
+            
+            if doc1_id:
+                st.write(f"**Size:** {st.session_state.documents[doc1_id]['size']/1024:.1f} KB")
+                st.write(f"**Words:** {len(st.session_state.documents[doc1_id]['content'].split())}")
+        
+        with col2:
+            st.markdown("### Second Document")
+            # Filter out the first document
+            doc2_options = {doc_id: doc["filename"] for doc_id, doc in st.session_state.documents.items() if doc_id != doc1_id}
+            doc2_id = st.selectbox("Select second document", options=list(doc2_options.keys()), format_func=lambda x: doc2_options[x], key="doc2_select")
+            
+            if doc2_id:
+                st.write(f"**Size:** {st.session_state.documents[doc2_id]['size']/1024:.1f} KB")
+                st.write(f"**Words:** {len(st.session_state.documents[doc2_id]['content'].split())}")
+        
+        if doc1_id and doc2_id and st.button("Compare Documents", type="primary"):
+            with st.spinner("Comparing documents..."):
+                # Get document data
+                doc1 = st.session_state.documents[doc1_id]
+                doc2 = st.session_state.documents[doc2_id]
                 
-                st.pyplot(fig)
-            else:
-                st.info("No clauses identified to visualize.")
+                # Get analysis data
+                analysis1 = st.session_state.analysis_results[doc1_id]
+                analysis2 = st.session_state.analysis_results[doc2_id]
+                
+                # Compare documents
+                comparison = compare_documents(doc1, doc2, analysis1, analysis2)
+                
+                # Store in session state
+                st.session_state.comparison_docs = [doc1_id, doc2_id]
+                st.session_state.comparison_result = comparison
+                
+                st.success("Comparison completed!")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Show comparison results if available
+        if hasattr(st.session_state, 'comparison_result') and len(st.session_state.comparison_docs) == 2:
+            comparison = st.session_state.comparison_result
+            doc1_id, doc2_id = st.session_state.comparison_docs
+            doc1_name = st.session_state.documents[doc1_id]["filename"]
+            doc2_name = st.session_state.documents[doc2_id]["filename"]
+            
+            # Overview comparison
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.subheader("Document Comparison Overview")
+            
+            overview_cols = st.columns(2)
+            
+            with overview_cols[0]:
+                st.markdown(f"### {doc1_name}")
+                st.markdown(f"**Size:** {comparison['overview']['doc1_size']}")
+                st.markdown(f"**Words:** {comparison['overview']['doc1_word_count']}")
+                st.markdown(f"**Entities:** {comparison['entities']['doc1_entities']}")
+                st.markdown(f"**Risks:** {comparison['risks']['doc1_risks']} (High: {comparison['risks']['doc1_high_risks']})")
+            
+            with overview_cols[1]:
+                st.markdown(f"### {doc2_name}")
+                st.markdown(f"**Size:** {comparison['overview']['doc2_size']}")
+                st.markdown(f"**Words:** {comparison['overview']['doc2_word_count']}")
+                st.markdown(f"**Entities:** {comparison['entities']['doc2_entities']}")
+                st.markdown(f"**Risks:** {comparison['risks']['doc2_risks']} (High: {comparison['risks']['doc2_high_risks']})")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Clause comparison
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.subheader("Clause Comparison")
+            
+            # Create HTML table
+            st.markdown('<table class="styled-table">', unsafe_allow_html=True)
+            st.markdown(f'<thead><tr><th>Clause Type</th><th>{doc1_name}</th><th>{doc2_name}</th><th>Difference</th></tr></thead><tbody>', unsafe_allow_html=True)
+            
+            for clause_type, data in comparison["clauses"].items():
+                formatted_clause_type = clause_type.replace('_', ' ').title()
+                doc1_count = data["doc1_count"]
+                doc2_count = data["doc2_count"]
+                difference = doc1_count - doc2_count
+                
+                # Visual indicator of difference
+                if difference > 0:
+                    diff_text = f"<span style='color:#c53030;'>+{difference}</span>"
+                elif difference < 0:
+                    diff_text = f"<span style='color:#2f855a;'>{difference}</span>"
+                else:
+                    diff_text = "<span style='color:#718096;'>0</span>"
+                
+                # Highlight rows where one document has the clause but the other doesn't
+                row_style = ""
+                if (data["doc1_has"] and not data["doc2_has"]) or (not data["doc1_has"] and data["doc2_has"]):
+                    row_style = "background-color:#fef6e4;"
+                
+                st.markdown(f'<tr style="{row_style}"><td>{formatted_clause_type}</td><td>{doc1_count}</td><td>{doc2_count}</td><td>{diff_text}</td></tr>', unsafe_allow_html=True)
+            
+            st.markdown('</tbody></table>', unsafe_allow_html=True)
+            
+            # Summary of key differences
+            st.subheader("Key Differences")
+            
+            # Get clause types exclusive to each document
+            doc1_exclusive = [k.replace('_', ' ').title() for k, v in comparison["clauses"].items() if v["doc1_has"] and not v["doc2_has"]]
+            doc2_exclusive = [k.replace('_', ' ').title() for k, v in comparison["clauses"].items() if not v["doc1_has"] and v["doc2_has"]]
+            
+            if doc1_exclusive:
+                st.markdown(f"**Clauses only in {doc1_name}:** {', '.join(doc1_exclusive)}")
+            
+            if doc2_exclusive:
+                st.markdown(f"**Clauses only in {doc2_name}:** {', '.join(doc2_exclusive)}")
+            
+            if not doc1_exclusive and not doc2_exclusive:
+                st.markdown("Both documents contain the same types of clauses, though the counts may differ.")
             
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -811,7 +992,6 @@ else:  # About section
         - Python 3.10
         - Streamlit 1.26.0
         - Pandas
-        - Matplotlib
         """)
     
     with tech_col2:
