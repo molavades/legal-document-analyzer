@@ -521,14 +521,14 @@ elif menu == "Search Documents":
         
         # Sample search results
         st.markdown("### Search Results")
-        
+
         # Result 1
         st.markdown('<div style="padding:15px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; margin-bottom:15px;">'
-                   '<h4 style="margin-top:0;">Employment Agreement (Section 5)</h4>'
-                   '<p><mark>This Agreement may be terminated by either party with thirty (30) days written notice.</mark> '
-                   'The Company may terminate the Employee's employment immediately for Cause...</p>'
-                   '<p><strong>Relevance Score:</strong> 95%</p>'
-                   '</div>', unsafe_allow_html=True)
+           '<h4 style="margin-top:0;">Employment Agreement (Section 5)</h4>'
+           '<p><mark>This Agreement may be terminated by either party with thirty (30) days written notice.</mark> '
+           'The Company may terminate the Employee\'s employment immediately for Cause...</p>'
+           '<p><strong>Relevance Score:</strong> 95%</p>'
+           '</div>', unsafe_allow_html=True)
         
         # Result 2
         st.markdown('<div style="padding:15px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; margin-bottom:15px;">'
